@@ -81,17 +81,39 @@ async function crearEnlace(){
   ls.set("kg_sid", sid); ls.set("kg_ini", String(Date.now()));
   const destino = location.origin + location.pathname + "?sid=" + sid;
   try{
-    const u = "https://dnlink.site/api?api=" + encodeURIComponent(DNLINK_TOKEN) + "&url=" + encodeURIComponent(destino)
-            + "&steps=" + PASOS + "&name=" + encodeURIComponent(PRODUCTO + " prueba");
-    const r = await fetch(u).then(x => x.json());
-    if(r.status !== "success") throw new Error(r.message || "El acortador devolvió un error.");
+    const link = await acortar(destino);
     ls.set("kg_ini", String(Date.now()));
     vista(cab() + `<p class="hint">¡Enlace listo! Toca continuar, completa los pasos y regresarás aquí con tu key.</p>
-      <a class="btn" href="${r.shortenedUrl}">Continuar →</a>`);
+      <a class="btn" href="${link}">Continuar →</a>`);
   }catch(e){
     ls.del("kg_sid"); reset();
     m.textContent = "No se pudo crear el enlace: " + (e.message || "error de conexión") + ". Revisa el token o inténtalo de nuevo.";
   }
+}
+
+/* ---- Llama al acortador probando varias formas y muestra qué respondió si falla ---- */
+async function acortar(destino){
+  const T = encodeURIComponent(DNLINK_TOKEN), E = encodeURIComponent(destino), B = "https://dnlink.site/api?api=" + T;
+  const intentos = [
+    B + "&url=" + E + "&steps=" + PASOS + "&format=text",
+    B + "&url=" + destino + "&steps=" + PASOS + "&format=text",
+    B + "&url=" + E
+  ];
+  let diag = "";
+  for(const u of intentos){
+    try{
+      const r = await fetch(u), t = (await r.text()).trim();
+      try{
+        const j = JSON.parse(t);
+        if(j.status === "success" && j.shortenedUrl) return j.shortenedUrl;
+        diag = j.message || t.slice(0,140); continue;
+      }catch(e){}
+      if(/^https?:\/\/\S+$/.test(t)) return t;
+      const ti = (t.match(/<title>([^<]*)<\/title>/i) || [])[1];
+      diag = "HTTP " + r.status + " · " + (ti || t.replace(/<[^>]*>/g," ").replace(/\s+/g," ").slice(0,140));
+    }catch(e){ diag = "sin respuesta (" + e.message + ")"; }
+  }
+  throw new Error(diag || "respuesta inesperada");
 }
 
 /* ---- Paso 2: al volver del acortador ---- */
