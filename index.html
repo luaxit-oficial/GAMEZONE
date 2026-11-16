@@ -31,7 +31,8 @@ body{min-height:100vh;background:radial-gradient(700px 380px at 15% -80px,#ff6a0
 
 <script>
 /* ================= CONFIGURACIÓN ================= */
-const DNLINK_TOKEN = "15fb1065dbb9a6f54cb1c9ef69f87f83943b4615";   // tu token de dnlink.site (ver nota de seguridad)
+const DNLINK_TOKEN = "PEGA_AQUI_TU_TOKEN";   // tu token de dnlink.site (ver nota de seguridad)
+const ENLACE_FIJO = "https://dnlink.site/p/de4f7d7546025aa4eec2e10b";                        // enlace acortado que creas tú en dnlink (destino: https://TU-SITIO/key-gratis.html?v=1)
 const PASOS = 2;                               // pasos del acortador (2 a 6)
 const MIN_SEGUNDOS = 15;                       // tiempo mínimo entre pulsar "Obtener" y volver del acortador
 const COOLDOWN_HORAS = 24;                     // cada cuánto puede pedir otra key
@@ -75,6 +76,12 @@ async function crearEnlace(){
   const b = $("go"), m = $("msg"); m.textContent = "";
   const reset = () => { b.disabled = false; b.textContent = "🔗 Obtener mi key"; };
   if(!/^https?:$/.test(location.protocol)){ m.textContent = "Esta página debe estar en un hosting (https). Desde un archivo descargado no funciona."; return; }
+  if(ENLACE_FIJO){
+    ls.set("kg_sid", rand()); ls.set("kg_ini", String(Date.now()));
+    vista(cab() + `<p class="hint">¡Listo! Toca continuar, completa los pasos y regresarás aquí con tu key.</p>
+      <a class="btn" href="${ENLACE_FIJO}" onclick="ls.set('kg_ini',String(Date.now()))">Continuar →</a>`);
+    return;
+  }
   if(!DNLINK_TOKEN || DNLINK_TOKEN.startsWith("PEGA")){ m.textContent = "Falta poner el token del acortador en el archivo."; return; }
   b.disabled = true; b.textContent = "Creando enlace...";
   const sid = rand();
@@ -120,7 +127,7 @@ async function acortar(destino){
 function volver(sid){
   history.replaceState(null, "", location.pathname);
   const g = ls.get("kg_sid"), seg = (Date.now() - (+ls.get("kg_ini") || 0)) / 1000;
-  if(!g || g !== sid) return error("Este enlace no es válido o ya se usó. Empieza de nuevo.");
+  if(!g || (g !== sid && !(ENLACE_FIJO && sid === "1"))) return error("Este enlace no es válido o ya se usó. Empieza de nuevo.");
   ls.del("kg_sid");
   if(seg < MIN_SEGUNDOS) return error("Llegaste demasiado rápido: parece que te saltaste los pasos del acortador. Empieza de nuevo.");
   const k = KEYS[Math.floor(Math.random() * KEYS.length)], t = Date.now();
@@ -139,7 +146,7 @@ function error(t){
   vista(cab() + `<div class="msg">${t}</div><button class="btn ghost" onclick="inicio()">Empezar de nuevo</button>`);
 }
 
-const sid = new URLSearchParams(location.search).get("sid");
+const P = new URLSearchParams(location.search), sid = P.get("sid") || P.get("v");
 sid ? volver(sid) : inicio();
 </script>
 </body>
