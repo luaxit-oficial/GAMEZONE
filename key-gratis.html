@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Key gratis · LUA-XIT STORE</title>
+<style>
+:root{--bg:#090b10;--card:#121622;--card2:#0d1019;--line:#232a3b;--txt:#f1f3f9;--mut:#8a92a7;--ok:#22c55e}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{min-height:100vh;background:radial-gradient(700px 380px at 15% -80px,#ff6a0026,transparent 70%),radial-gradient(800px 420px at 90% -120px,#6d4aff26,transparent 70%),var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:20px 14px;display:flex;flex-direction:column;align-items:center}
+.brand{display:flex;align-items:center;gap:10px;margin:10px 0 22px;font-weight:800;letter-spacing:1px}
+.lx{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#ff6a00,#ff2d6f);display:grid;place-items:center;font-weight:900;font-size:13px;color:#fff;box-shadow:0 4px 16px #ff6a0055}
+.card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:20px}
+.gh{background:linear-gradient(135deg,#ff6a00,#ff2d6f);border-radius:16px;padding:18px;text-align:center;margin-bottom:16px;color:#fff;box-shadow:0 8px 24px #ff6a0044}
+.gh .big{font-size:36px}.gh b{display:block;font-size:19px;margin-top:4px}.gh span{font-size:13px;opacity:.92}
+.hint{color:var(--mut);font-size:14px;line-height:1.5;margin-bottom:14px;text-align:center}
+.btn{display:block;width:100%;text-align:center;text-decoration:none;background:linear-gradient(135deg,#ff6a00,#ff2d6f);color:#fff;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;margin-top:10px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:#1c2335}
+.msg{font-size:13px;line-height:1.45;color:#f87171;text-align:center;margin:8px 0;min-height:4px}
+.key{background:var(--card2);border:2px dashed #ff6a00;border-radius:14px;padding:18px;text-align:center;font-family:Consolas,Menlo,monospace;font-size:20px;font-weight:700;word-break:break-all;-webkit-user-select:all;user-select:all}
+.ok{color:var(--ok);font-weight:700;text-align:center;margin-bottom:12px;font-size:15px}
+.foot{color:var(--mut);font-size:12px;margin-top:18px;text-align:center}
+</style>
+</head>
+<body>
+<div class="brand"><span class="lx">LX</span>LUA-XIT STORE</div>
+<div class="card" id="vista"></div>
+<p class="foot">Página de prueba · 1 key cada 24 horas por dispositivo</p>
+
+<script>
+/* ================= CONFIGURACIÓN ================= */
+const DNLINK_TOKEN = "PEGA_AQUI_TU_TOKEN";   // tu token de dnlink.site (ver nota de seguridad)
+const PASOS = 2;                               // pasos del acortador (2 a 6)
+const MIN_SEGUNDOS = 15;                       // tiempo mínimo entre pulsar "Obtener" y volver del acortador
+const COOLDOWN_HORAS = 24;                     // cada cuánto puede pedir otra key
+const PRODUCTO = "HOLO-VIP", DURACION = "24 horas";
+const KEYS = ["PRUEBA-HOLO-0001", "PRUEBA-HOLO-0002", "PRUEBA-HOLO-0003"]; // keys de prueba: se ven en el código
+/* ================================================== */
+
+const $ = id => document.getElementById(id);
+const ls = {
+  get: k => { try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set: (k,v) => { try{ localStorage.setItem(k,v); }catch(e){} },
+  del: k => { try{ localStorage.removeItem(k); }catch(e){} }
+};
+const vista = h => { $("vista").innerHTML = h; };
+const cab = () => `<div class="gh"><div class="big">🎁</div><b>Key gratis de ${DURACION}</b><span>${PRODUCTO} · prueba</span></div>`;
+function rand(){
+  const a = "abcdefghjkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint8Array(10));
+  return [...r].map(x=>a[x%a.length]).join("");
+}
+function copiar(t,b){
+  const fin = ok => { b.textContent = ok ? "¡Copiada!" : "Mantén pulsada la key"; setTimeout(()=>b.textContent="📋 Copiar key",2000); };
+  const viejo = () => { try{
+    const a = document.createElement("textarea"); a.value = t; a.setAttribute("readonly","");
+    a.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+    document.body.appendChild(a); a.focus(); a.select(); a.setSelectionRange(0,t.length);
+    const ok = document.execCommand("copy"); document.body.removeChild(a); return ok;
+  }catch(e){ return false; } };
+  if(navigator.clipboard && window.isSecureContext){ navigator.clipboard.writeText(t).then(()=>fin(true)).catch(()=>fin(viejo())); }
+  else fin(viejo());
+}
+
+/* ---- Paso 1: crear el enlace acortado ---- */
+function inicio(){
+  const prev = JSON.parse(ls.get("kg_key") || "null");
+  if(prev && Date.now() - prev.t < COOLDOWN_HORAS*3600e3) return mostrarKey(prev.k, prev.t);
+  vista(cab() + `<p class="hint">Para conseguir tu key, completa el enlace de verificación (${PASOS} pasos) y vuelve aquí automáticamente.</p>
+    <div class="msg" id="msg"></div>
+    <button class="btn" id="go" onclick="crearEnlace()">🔗 Obtener mi key</button>`);
+}
+async function crearEnlace(){
+  const b = $("go"), m = $("msg"); m.textContent = "";
+  const reset = () => { b.disabled = false; b.textContent = "🔗 Obtener mi key"; };
+  if(!/^https?:$/.test(location.protocol)){ m.textContent = "Esta página debe estar en un hosting (https). Desde un archivo descargado no funciona."; return; }
+  if(!DNLINK_TOKEN || DNLINK_TOKEN.startsWith("PEGA")){ m.textContent = "Falta poner el token del acortador en el archivo."; return; }
+  b.disabled = true; b.textContent = "Creando enlace...";
+  const sid = rand();
+  ls.set("kg_sid", sid); ls.set("kg_ini", String(Date.now()));
+  const destino = location.origin + location.pathname + "?sid=" + sid;
+  try{
+    const u = "https://dnlink.site/api?api=" + encodeURIComponent(DNLINK_TOKEN) + "&url=" + encodeURIComponent(destino)
+            + "&steps=" + PASOS + "&name=" + encodeURIComponent(PRODUCTO + " prueba");
+    const r = await fetch(u).then(x => x.json());
+    if(r.status !== "success") throw new Error(r.message || "El acortador devolvió un error.");
+    ls.set("kg_ini", String(Date.now()));
+    vista(cab() + `<p class="hint">¡Enlace listo! Toca continuar, completa los pasos y regresarás aquí con tu key.</p>
+      <a class="btn" href="${r.shortenedUrl}">Continuar →</a>`);
+  }catch(e){
+    ls.del("kg_sid"); reset();
+    m.textContent = "No se pudo crear el enlace: " + (e.message || "error de conexión") + ". Revisa el token o inténtalo de nuevo.";
+  }
+}
+
+/* ---- Paso 2: al volver del acortador ---- */
+function volver(sid){
+  history.replaceState(null, "", location.pathname);
+  const g = ls.get("kg_sid"), seg = (Date.now() - (+ls.get("kg_ini") || 0)) / 1000;
+  if(!g || g !== sid) return error("Este enlace no es válido o ya se usó. Empieza de nuevo.");
+  ls.del("kg_sid");
+  if(seg < MIN_SEGUNDOS) return error("Llegaste demasiado rápido: parece que te saltaste los pasos del acortador. Empieza de nuevo.");
+  const k = KEYS[Math.floor(Math.random() * KEYS.length)], t = Date.now();
+  ls.set("kg_key", JSON.stringify({k, t}));
+  mostrarKey(k, t);
+}
+function mostrarKey(k, t){
+  const faltan = Math.max(0, Math.ceil((t + COOLDOWN_HORAS*3600e3 - Date.now()) / 3600e3));
+  vista(cab() + `<div class="ok">✅ ¡Verificación completada!</div>
+    <div class="key" id="k"></div>
+    <button class="btn" onclick="copiar($('k').textContent,this)">📋 Copiar key</button>
+    <p class="hint" style="margin-top:14px">Esta es tu key de ${PRODUCTO} (${DURACION}). Podrás pedir otra en ${faltan} h.</p>`);
+  $("k").textContent = k;
+}
+function error(t){
+  vista(cab() + `<div class="msg">${t}</div><button class="btn ghost" onclick="inicio()">Empezar de nuevo</button>`);
+}
+
+const sid = new URLSearchParams(location.search).get("sid");
+sid ? volver(sid) : inicio();
+</script>
+</body>
+</html>
